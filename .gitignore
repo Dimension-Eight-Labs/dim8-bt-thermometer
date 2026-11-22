@@ -1,0 +1,67 @@
+# DIM8 Govee Thermometer — Git ignore policy
+#
+# Patterns are deliberately narrow where a broad rule could hide evidence.
+# Raw BLE advertisement fixtures used by decoder tests must remain trackable
+# (see AGENTS.md), so do not add blanket capture, data, or binary patterns.
+
+# Cezar workflow state and human-facing handoffs. This matches the convention
+# in other DIM8 repositories. It also keeps the launch key and run state out of
+# history, and keeps for-user/ handoffs from dirtying the base worktree, which
+# the Cezar integration step requires to be clean.
+.ai/
+
+# Local agent settings
+.claude/settings.local.json
+
+# Gradle
+.gradle/
+build/
+# The wrapper JAR must stay tracked so builds are reproducible.
+!gradle/wrapper/gradle-wrapper.jar
+
+# Kotlin compiler sessions and error reports
+.kotlin/
+
+# Android SDK paths and machine-specific build configuration
+local.properties
+
+# Android build outputs
+*.apk
+*.aab
+*.ap_
+*.apks
+*.dex
+*.class
+output-metadata.json
+
+# Native build caches
+.cxx/
+.externalNativeBuild/
+
+# Signing material and local secrets. Never commit release keys.
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+# Root only: Android Studio's profiler output directory. Anchored so that a
+# test fixture directory named "captures" is not ignored.
+/captures/
+
+# Runtime diagnostics and heap dumps
+*.hprof
+hs_err_pid*
+replay_pid*
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
