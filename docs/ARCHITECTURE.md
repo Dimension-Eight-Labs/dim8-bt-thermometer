@@ -1,4 +1,4 @@
-# DIM8 Govee Thermometer — Architecture
+# DIM8 BT Thermometer — Architecture
 
 Status: proposed architecture for owner review
 
@@ -6,7 +6,7 @@ Initial release: v0.1
 
 Target device: Google Pixel XL (`marlin`), Android 10/API 29
 
-Package: `com.dim8labs.goveethermometer`
+Package: `com.dim8labs.btthermometer`
 
 ## Goals and release priorities
 
@@ -180,7 +180,7 @@ Track last packet and last valid reading separately per probe using monotonic ti
 The stale timeout and scan-restart interval must be constants backed by actual advertisement-cadence captures. Until measured, their numeric values are unresolved; tests should use an injected clock and configurable duration. When stale:
 
 - keep the last value visibly marked with its age rather than presenting it as current;
-- raise one connection/stale warning, subject to acknowledgement policy;
+- raise a repeating alarm-stream warning with a lock-screen page until it is silenced or signal returns, and sound it again every 5 minutes after silencing until signal returns or monitoring stops (owner requirement for overnight use, 2026-11-22);
 - continue bounded scan recovery automatically; and
 - never evaluate a new temperature alarm from stale or invalid data.
 
@@ -192,12 +192,21 @@ Each probe has enabled/disabled low and high thresholds plus a positive hysteres
 
 - enter `HIGH` at or above the high threshold; re-arm only after falling below `high − hysteresis`;
 - enter `LOW` at or below the low threshold; re-arm only after rising above `low + hysteresis`;
-- acknowledgement silences the current episode but leaves a visible violation until recovery;
+- owner decision (2026-11-22): an alarm sounds only while the reading is beyond its limit, stops on return inside the limit, and resumes if an unsilenced episode crosses the limit again;
+- acknowledgement silences the current episode through boundary noise until the re-arm point, while the violation remains visible whenever the reading is beyond the limit;
 - continued violating samples do not restart sound; crossing the re-arm boundary permits a later new episode;
-- a direct low-to-high or high-to-low transition is a new episode; and
-- stale/invalid readings produce a monitoring warning, not a fabricated temperature alarm.
+- a direct low-to-high or high-to-low transition is a new episode;
+- stale/invalid readings produce a monitoring warning, not a fabricated temperature alarm; and
+- a packet reporting a probe as unavailable (`0xffff`) immediately raises a separate missing-probe alarm for that probe, including on the first packet of a monitoring session. It uses the probe alarm sound, notification, lock-screen page, and Silence control. While a probe is missing, its temperature alarm is held silent, and Silence during a missing period does not acknowledge that temperature alarm.
+- recovery from missing requires at least 3 valid readings spanning 5 seconds (owner-approved period, 2026-11-22). Readings during qualification are not displayed, stored, or evaluated. An unavailable or rejected word, or a packet gap reaching the signal-loss timeout, restarts qualification without starting a new missing episode, so intermittent contact cannot restart a silenced alarm. Once qualified, the missing alarm clears and the temperature alarm is re-evaluated with its Silence state intact. A later disconnect is a new missing episode.
+- a silenced missing-probe alarm sounds again 5 minutes after the latest Silence while the probe remains missing, including during recovery qualification (owner requirement). Contact changes do not move this schedule. Recovery or taking the probe out of use clears it. Its timer is independent per probe and separate from the signal-loss repeat.
+- each probe has a persistent In Use setting, defaulting to in use. Packets for an unused probe are ignored, so it raises no alarms and adds no history. Changing the setting clears that probe's alarms, reminder, recovery state, and current reading while keeping its target and limits. A probe returned to use is evaluated only from the next packet.
 
-Persist thresholds and preferences before applying them. Notifications must use separate monitoring and alarm channels. The alarm channel should use a high-importance audible notification and visible full probe context; comply with user-controlled channel sound settings. A notification action must acknowledge/silence without requiring the activity. Exact default thresholds, hysteresis, sound, vibration, and escalation duration require owner approval and physical audibility testing.
+**Hardware observation (2026-11-22, owner decision):** the H5182 can briefly report an unusually low but valid-looking temperature while a probe connector is being removed. One recorded case read 33.8 °F for about 16 s before the probe reported unavailable, which raised a LOW alarm. The connector is physically finicky. This is documented as hardware behavior and deliberately not filtered, because a cold reading can be real. Revisit only if normal cooking shows a recurring problem.
+
+Alarm sound and vibration are owned by one app-level player on the alarm audio stream, not by notifications (2026-11-22). Physical testing found notification-owned sound stopped after a swipe while the alarm stayed active. The player runs while any unsilenced alert exists, so overlapping alerts share one stream, and only Silence, the condition clearing, or stopping monitoring ends it. The monitor tick restarts sound that ends unexpectedly.
+
+Persist thresholds and preferences before applying them. Notifications must use separate monitoring and alarm channels. Alarm channels are high-importance and silent, providing the heads-up, full-screen page, and full probe context. Android alarm volume and Do Not Disturb still apply. A notification action must acknowledge/silence without requiring the activity. Exact default thresholds, hysteresis, sound, vibration, and escalation duration require owner approval and physical audibility testing.
 
 ## Persistence and bounded history
 
@@ -244,6 +253,21 @@ Record date, APK/version or commit, phone build, H5182 identity, tester, steps, 
 - [ ] Run longer than 30 minutes with irregular/repeated packets; verify both sparklines remain bounded, show gaps honestly, and do not affect monitoring.
 - [ ] Test alarm audibility/readability with the screen locked in the expected outdoor/cooking environment.
 
+## v0.1 implementation decisions
+
+These decisions were made during implementation. Items marked provisional need physical evidence or owner approval.
+
+- **SDK and dependencies:** `minSdk` and `targetSdk` are 29, and `compileSdk` is 37. Targeting API 29 keeps permission and service behavior equal to the tested phone. The app has no runtime library beyond the Kotlin standard library.
+- **Background access:** the service uses foreground-service type `location` and does not request `ACCESS_BACKGROUND_LOCATION`. Screen-off delivery requires physical verification.
+- **CPU sleep:** the service holds a renewed, time-limited partial wake lock while monitoring, because stale-signal detection cannot run during CPU sleep. This trades battery for alarm reliability. Battery impact is unmeasured.
+- **Location services:** `Location off` is an explicit monitor state, because API 29 BLE scans can return nothing without an error when location is disabled.
+- **Scan filter and mode:** one `0x8251` service-UUID filter with `SCAN_MODE_LOW_LATENCY`. Physical captures showed the UUID in temperature-bearing results. On the Pixel XL with the screen on, packet spacing improved from a 5 s median and 16 s maximum with `SCAN_MODE_BALANCED` to a 1 s median and 7 s maximum. Locked-screen spacing and battery cost still require measurement.
+- **Provisional constants:** 60 s stale timeout, 10–120 s scan-restart backoff, 0–300 °C accepted range, 1 °C default hysteresis, and 3 °C color band. Alarm thresholds are disabled until the user sets them.
+- **Process restart:** a sticky restart resumes a monitoring session that the user started. Monitoring does not start at boot.
+- **Timer across reboot (provisional, question 6):** the timer stops at its last 30-second checkpoint, excludes powered-off time, and waits for Start. Timing uses monotonic time, so no wall-clock anchor is stored.
+- **History:** each probe keeps the first accepted sample in each of 180 ten-second buckets.
+- **Debug capture:** debug builds log rate-limited `H5182Capture` lines with a salted device hash and raw manufacturer bytes to build target-device fixtures. Release builds do not log them. Remove this after qualification.
+
 ## Decisions and unresolved questions
 
 Proposed decisions: advertisements only for v0.1; app-local alarms; one selected H5182; foreground service owns scanning; pure decoder/alarm core; Celsius canonical storage; bounded local history; no auto-start monitoring on boot without later approval.
@@ -258,3 +282,13 @@ Questions requiring evidence or owner decision:
 6. Should a cook timer that was running before a reboot include powered-off time, pause at reboot, or prompt the user?
 7. Is monitoring resume after reboot desired? It is excluded from the current proposal because background-start behavior and user expectations need explicit approval.
 8. Which established DIM8 brand assets and colors are approved for this app?
+
+## Release identity and signing
+
+The application ID is `com.dim8labs.btthermometer`. Version 1.0.0 uses version code 1, and every later release must increase the version code.
+
+Release builds read signing details from `~/.config/dim8-bt-thermometer/signing.properties`, or from the file named by `DIM8_BT_THERMOMETER_SIGNING`. The keystore and that file stay outside the repository. Without them, Gradle produces an unsigned release APK. Android accepts an update only when it has the same application ID and signing key, so the key must be preserved for all future releases. `tools/create_release_key.sh` creates the key once and refuses to replace an existing one.
+
+The release certificate SHA-256 fingerprint is `E7:56:C6:43:BF:1F:F2:57:80:02:BF:14:E3:D4:37:B4:63:F1:2D:7F:FD:38:55:5D:76:35:99:86:44:6F:44:04`.
+
+Code shrinking is off for release builds so the shipped code stays the code that was physically tested. The anonymized H5182 capture log runs only when `BuildConfig.DEBUG` is true.

@@ -1,6 +1,12 @@
-# DIM8 Govee Thermometer — Agent Instructions
+# DIM8 BT Thermometer — Agent Instructions
 
 These repository instructions supplement the global Dimension Eight Labs rules. They apply to all work in this project.
+
+## Product identity
+
+- Application: DIM8 BT Thermometer. Project and repository: `dim8-bt-thermometer`.
+- Android application ID and Kotlin namespace: `com.dim8labs.btthermometer`. Never change the application ID, because Android treats a new ID as a different app.
+- "Govee" is not product branding. Keep it only where it accurately identifies the supported Govee H5182 hardware, protocol sources, or upstream projects.
 
 ## Product boundary
 
@@ -31,9 +37,8 @@ These repository instructions supplement the global Dimension Eight Labs rules. 
 - Before changes, inspect repository state and relevant source/tests. At handoff, report files changed, commands and tests actually run, warnings, limitations, and remaining physical verification.
 - Do not implement features beyond the approved milestone merely because later work is documented.
 
-## Git and Cezar ownership
+## Git ownership and workflow
 
 - The owner controls staging, commits, branches, merges, pushes, tags, releases, and deployment. Do not perform these operations without explicit authorization. Do not remove worktrees or alter unrelated files.
-- Normal development uses the Cezar **DIM8 Development** flow: Codex planning → owner approval/revision → Claude implementation → independent Codex review → owner-controlled Git integration.
-- This initial documentation creation is an owner-authorized, documentation-only exception. It does not authorize application implementation or any later exception.
-- Do not run, modify, or interfere with Cezar state or configuration under `.ai/cezar` unless explicitly directed by the owner.
+- This project uses a direct-agent workflow in the project directory. Cezar is not used, and the `.ai` directory must not be recreated.
+- Write human-facing reports, implementation summaries, test results, and handoffs as descriptive Markdown files in the project-root `for-user/` directory. It is ignored by Git. Do not overwrite earlier reports unnecessarily.

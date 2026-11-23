@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DIM8 BT Thermometer</string>
+    <string name="dim8_logo">DIM8 logo</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="reset">Reset</string>
+    <string name="save">Save</string>
+    <string name="silence_signal_warning">Silence signal alarm</string>
+    <string name="thermometer">Thermometer</string>
+    <string name="change_thermometer">Change thermometer</string>
+    <string name="display">Display</string>
+    <string name="alerts">Alerts</string>
+    <string name="use_fahrenheit">Show temperatures in °F</string>
+    <string name="signal_warning">Warn when signal is lost</string>
+    <string name="notification_settings">System notification settings</string>
+    <string name="probe_in_use">In use</string>
+    <string name="probe_in_use_help">Off = no alarms for this probe</string>
+    <string name="target_label">Target</string>
+    <string name="low_label">Low alarm</string>
+    <string name="high_label">High alarm</string>
+    <string name="hysteresis_label">Hysteresis</string>
+    <string name="hysteresis_help">How far back inside a limit before its alarm re-arms</string>
+    <string name="color_band_label">Color band</string>
+    <string name="color_band_help">Width of the near-target color range</string>
+    <string name="none_hint">None</string>
+    <string name="off_hint">Off</string>
+    <string name="cook_timer">COOK TIMER</string>
+    <string name="low_short_label">Low</string>
+    <string name="high_short_label">High</string>
+    <string name="advanced">Advanced</string>
+</resources>

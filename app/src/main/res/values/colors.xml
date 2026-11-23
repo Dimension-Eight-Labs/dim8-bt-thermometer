@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Official DIM8 Labs palette (docs/DESIGN.md). Do not add brand colors here.
+     Temperature heat-map colors are separate, in core/Presentation.kt. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources">
+    <color name="vfd_primary">#B8DDD7</color>
+    <color name="vfd_bright">#D6F4EF</color>
+    <color name="vfd_dim">#5D837E</color>
+    <color name="vfd_secondary">#97B5B0</color>
+    <color name="background">#010100</color>
+    <color name="surface">#0A0C0D</color>
+    <color name="surface_raised">#111517</color>
+    <color name="text_primary">#ECEEEC</color>
+    <color name="text_body">#C9CFCD</color>
+    <color name="text_muted">#96A3A0</color>
+    <color name="border">#1C2426</color>
+    <!-- rgb(140 220 206 / 38%) -->
+    <color name="vfd_glow">#618CDCCE</color>
+
+    <!-- Functional alarm colors. The accent is the approved "Hot" temperature color. -->
+    <color name="alarm_background">#4A0F0A</color>
+    <color name="alarm_accent">#D84A43</color>
+</resources>

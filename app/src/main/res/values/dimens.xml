@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="graph_label_text">10sp</dimen>
+    <dimen name="card_radius">8dp</dimen>
+    <dimen name="control_radius">6dp</dimen>
+</resources>
