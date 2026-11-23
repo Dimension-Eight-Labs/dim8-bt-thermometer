@@ -1,8 +1,8 @@
 # DIM8 BT Thermometer — Architecture
 
-Status: proposed architecture for owner review
+Status: implemented architecture for the v1.0.0 initial release
 
-Initial release: v0.1
+License: `GPL-3.0-only`. Copyright © 2026 Dimension Eight Labs LLC.
 
 Target device: Google Pixel XL (`marlin`), Android 10/API 29
 
@@ -12,22 +12,22 @@ Package: `com.dim8labs.btthermometer`
 
 The application monitors one selected Govee H5182 locally, shows both probes, evaluates independent local high/low alarms, and continues monitoring with the screen off. It has no backend, accounts, telemetry, advertisements, or cloud dependency.
 
-Work in this order for the Wednesday, November 25, 2026 deadline:
+Development priorities, in order:
 
 1. Correct H5182 advertisement identification and temperature decoding.
 2. Reliable foreground monitoring, stale/loss detection, and high/low alarms.
 3. Persistent settings, timer state, and restart/recovery behavior.
 4. Readable minimalist UI.
-5. Bounded 30-minute sparklines and elapsed cook time.
+5. Bounded 30-minute history graphs and elapsed cook time.
 
 Monitoring reliability is the release gate. Cosmetic work must not displace physical screen-off, alarm, and recovery testing.
 
 ## Platform and composition
 
 - Kotlin and native Android/AndroidX APIs.
-- `minSdk 29` for v0.1. Compile/target SDK selection is an implementation-time toolchain decision; behavior must be verified on the API 29 Pixel XL.
+- `minSdk` and `targetSdk` are 29, and `compileSdk` is 37. Behavior is verified on the API 29 Pixel XL.
 - One application module unless a demonstrated test/build need justifies more.
-- Explicit constructor composition at the application/service boundary. Avoid dependency-injection, BLE, charting, and background-work frameworks for v0.1.
+- Explicit constructor composition at the application/service boundary. Avoid dependency-injection, BLE, charting, and background-work frameworks.
 - A foreground service owns continuous monitoring. The activity renders state and sends user intents; it does not own the scan lifetime.
 - Local storage only. Small preferences/cook state may use `SharedPreferences`; bounded history may use a small `SQLiteOpenHelper` store. Hide either choice behind interfaces so storage can change without affecting alarm or UI logic.
 
@@ -59,7 +59,7 @@ Responsibilities:
 - `MonitoringCoordinator`: sole writer of authoritative runtime state. It timestamps accepted readings, updates history, evaluates alarms, and publishes immutable snapshots.
 - `AlarmEvaluator`: pure state machine per probe for high, low, normal, acknowledged, and re-arm behavior.
 - `SettingsStore`, `CookStateStore`, `HistoryStore`: narrow persistence interfaces. Each owns schema/version handling and bounded storage.
-- `NotificationPort`: foreground status and alarm/warning notifications, channels, sound, and acknowledgement actions. It consumes alarm decisions rather than deriving them.
+- `NotificationPort`: foreground status and alarm/warning notifications, channels, acknowledgement actions, and the app-owned alarm player. It consumes alarm decisions rather than deriving them.
 - Activity/view model: maps snapshots and user intents to the main screen. It does not scan, decode, or evaluate thresholds.
 
 Core data types should use Celsius internally and represent absence explicitly. Unit conversion belongs at presentation/input boundaries. Use monotonic elapsed time for freshness and duration while running; also persist wall-clock anchors needed to reconstruct a running cook after process death or reboot, defensively handling clock changes.
@@ -149,7 +149,7 @@ Fixtures derived from public examples should record provenance and use synthetic
 
 **Inferred:** controller-level passive scanning should be sufficient because H5182 is not marked by `govee-ble` as requiring active scan-response collection. This does not prove Android API 29 delivery under screen-off or low-power conditions. The Pixel XL must validate filtered scanning with the selected Android scan settings, screen locked, and the Govee app absent and present.
 
-Reading an advertised device alarm is not the same as writing settings. None of the reviewed H5182 decode paths contains a verified H5182 command for changing alarm/target values. `GoveeBTTempLogger` also has connected protocols for history download/authentication on some Govee devices, but that does not establish H5182 configuration-write support. v0.1 must not connect or write GATT settings; local app thresholds remain authoritative.
+Reading an advertised device alarm is not the same as writing settings. None of the reviewed H5182 decode paths contains a verified H5182 command for changing alarm/target values. `GoveeBTTempLogger` also has connected protocols for history download/authentication on some Govee devices, but that does not establish H5182 configuration-write support. The app must not connect or write GATT settings; local app thresholds remain authoritative.
 
 ### Licensing
 
@@ -157,11 +157,11 @@ Reading an advertised device alarm is not the same as writing settings. None of 
 - `GoveeBT-Python` is [MIT-licensed](https://github.com/TechnoSwiss/GoveeBT-Python) and states that its decoder is based on `GoveeBTTempLogger`; it should not be treated as an independently licensed origin for copied upstream code.
 - `govee-ble` is [Apache-2.0 licensed](https://github.com/Bluetooth-Devices/govee-ble/blob/main/LICENSE), while `parser.py` also states that its parser was copied from an MIT-licensed source. Exact reuse requires preserving the applicable notices and satisfying Apache NOTICE/attribution obligations where they apply.
 
-Protocol facts, offsets, and independently written decoding logic are preferable to copying source. Before implementation, record third-party attribution for any code or fixture copied verbatim and have the owner review the final dependency/license inventory. This section is engineering guidance, not legal advice.
+`H5182Decoder` is independently written from protocol facts and copies no upstream source. Three public sample advertisements are used as test inputs. Attribution and the dependency inventory are in [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md). This section is engineering guidance, not legal advice.
 
 ### Required target-device evidence
 
-Before decoder acceptance, capture advertisements from the actual H5182 with both probes at distinguishable temperatures and compare them with a trusted reference. Capture each probe disconnected, several battery levels if practical, and device alarm changes. Record Android's separated manufacturer key/value, service UUIDs, local name, timestamps, and anonymized raw bytes. Convert those captures into unit fixtures and keep all physical-test results distinct from the source-derived examples above.
+Before decoder acceptance, capture advertisements from the actual H5182 with both probes at distinguishable temperatures and compare them with a trusted reference. Capture each probe disconnected, several battery levels if practical, and device alarm changes. Record Android's separated manufacturer key/value, service UUIDs, local name, timestamps, and anonymized raw bytes. Convert those captures into unit fixtures and keep all physical-test results distinct from the source-derived examples above. The first anonymized capture is `app/src/test/resources/fixtures/h5182-pixel-xl-2026-11-22.txt`.
 
 ## BLE and foreground operation on Android 10
 
@@ -233,27 +233,27 @@ Automated success does not satisfy physical acceptance.
 
 ### Physical-device acceptance checklist
 
-Record date, APK/version or commit, phone build, H5182 identity, tester, steps, and observed result. Every item starts **not tested** for this documentation task.
+Record date, APK/version or commit, phone build, H5182 identity, tester, steps, and observed result. A checked item has recorded physical evidence from November 22, 2026, mostly on development builds. The signed v1.0.0 APK was checked only for install, fresh settings, discovery, both probe readings, and a short monitoring session. Partial results stay unchecked.
 
-- [ ] Install the debug/release-candidate APK on the Pixel XL through ADB and launch it.
-- [ ] Grant required permissions; verify denial and later recovery are understandable.
-- [ ] Select the actual H5182 and receive temperatures matching an independent/trusted reading.
-- [ ] Change probe 1 and probe 2 independently; verify identity is not swapped.
-- [ ] Disconnect each probe; verify unavailable data is shown safely and does not create a false temperature.
-- [ ] Compare battery reporting with the physical/device reference where supported; otherwise label it unavailable.
-- [ ] Trigger each probe's high alarm at its boundary; verify sound, notification, and visible state.
-- [ ] Trigger each probe's low alarm at its boundary.
-- [ ] Acknowledge/silence an alarm, remain beyond the threshold, cross the hysteresis re-arm boundary, and trigger it again.
-- [ ] Lock the screen for a representative cook interval; verify continued reception, correct alarm timing, and foreground notification.
-- [ ] Move the H5182 out of range or power it off; verify stale/loss timing, warning, bounded recovery, and automatic reconnection.
+- [x] Install the debug/release APK on the Pixel XL through ADB and launch it.
+- [ ] Grant required permissions; verify denial and later recovery are understandable. *(Grant passed; denial and recovery not tested.)*
+- [x] Select the actual H5182 and receive temperatures matching an independent/trusted reading.
+- [x] Change probe 1 and probe 2 independently; verify identity is not swapped.
+- [x] Disconnect each probe; verify unavailable data is shown safely and does not create a false temperature.
+- [ ] Compare battery reporting with the physical/device reference where supported; otherwise label it unavailable. *(Plausible values seen; percentage accuracy not validated.)*
+- [ ] Trigger each probe's high alarm at its boundary; verify sound, notification, and visible state. *(Probe 1 recorded; Probe 2 not recorded.)*
+- [ ] Trigger each probe's low alarm at its boundary. *(Probe 2 recorded; Probe 1 not recorded.)*
+- [ ] Acknowledge/silence an alarm, remain beyond the threshold, cross the hysteresis re-arm boundary, and trigger it again. *(Silence recorded; full re-arm cycle not recorded.)*
+- [ ] Lock the screen for a representative cook interval; verify continued reception, correct alarm timing, and foreground notification. *(Short locked runs passed; a representative cook has not been run.)*
+- [x] Move the H5182 out of range or power it off; verify stale/loss timing, warning, bounded recovery, and automatic reconnection.
 - [ ] Disable/re-enable Bluetooth and revoke/restore permission; verify safe recovery.
-- [ ] Force-stop/process-kill and relaunch as applicable; verify documented service and state behavior.
-- [ ] Edit targets, high/low limits, units/preferences, and selected thermometer; restart the app and reboot the phone; verify persistence.
-- [ ] Start, stop, resume, and reset the cook timer; verify useful state across restart and reboot.
-- [ ] Run longer than 30 minutes with irregular/repeated packets; verify both sparklines remain bounded, show gaps honestly, and do not affect monitoring.
+- [ ] Force-stop/process-kill and relaunch as applicable; verify documented service and state behavior. *(One app restart recorded; force-stop not tested.)*
+- [ ] Edit targets, high/low limits, units/preferences, and selected thermometer; restart the app and reboot the phone; verify persistence. *(App updates and restart preserved settings; reboot not tested.)*
+- [ ] Start, stop, resume, and reset the cook timer; verify useful state across restart and reboot. *(Controls passed; restart and reboot not tested.)*
+- [ ] Run longer than 30 minutes with irregular/repeated packets; verify both history graphs remain bounded, show gaps honestly, and do not affect monitoring.
 - [ ] Test alarm audibility/readability with the screen locked in the expected outdoor/cooking environment.
 
-## v0.1 implementation decisions
+## v1.0.0 implementation decisions
 
 These decisions were made during implementation. Items marked provisional need physical evidence or owner approval.
 
@@ -270,18 +270,17 @@ These decisions were made during implementation. Items marked provisional need p
 
 ## Decisions and unresolved questions
 
-Proposed decisions: advertisements only for v0.1; app-local alarms; one selected H5182; foreground service owns scanning; pure decoder/alarm core; Celsius canonical storage; bounded local history; no auto-start monitoring on boot without later approval.
+Current decisions: advertisements only; app-local alarms; one selected H5182; foreground service owns scanning; pure decoder/alarm core; Celsius canonical storage; bounded local history; no auto-start monitoring on boot without later approval.
 
 Questions requiring evidence or owner decision:
 
-1. What exact local name, service UUIDs, manufacturer keys, address behavior, packet cadence, and payload variants does the target H5182/firmware emit?
+1. What payload variants and address behavior does the H5182 emit across firmware versions? On the tested unit, the `0x8251` UUID was present in temperature results, the local name was absent, and the manufacturer key and value byte 0 repeated address bytes.
 2. Is byte 5 a dependable battery percentage on this unit, and what does its high bit mean?
-3. What are the approved physical range, stale timeout, retry limits, default thresholds, hysteresis, target-color tolerance, and alarm sound/vibration policy?
+3. Should the provisional range, stale timeout, retry limits, hysteresis, and color band listed above become final?
 4. Does the H5182 expose only a high alarm in advertisements, and do its advertised values change predictably when the Govee app changes settings?
-5. Does API 29 screen-off scanning remain reliable with the chosen filter/mode and current battery-optimization setting?
-6. Should a cook timer that was running before a reboot include powered-off time, pause at reboot, or prompt the user?
-7. Is monitoring resume after reboot desired? It is excluded from the current proposal because background-start behavior and user expectations need explicit approval.
-8. Which established DIM8 brand assets and colors are approved for this app?
+5. Does API 29 screen-off scanning remain reliable over long runs? Short locked runs passed. Doze and battery optimization are untested.
+6. Should a cook timer that was running before a reboot include powered-off time, pause at reboot, or prompt the user? The current provisional behavior is described above and is not physically tested.
+7. Is monitoring resume after reboot desired? It is not implemented, because background-start behavior and user expectations need explicit approval.
 
 ## Release identity and signing
 

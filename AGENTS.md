@@ -4,7 +4,7 @@ These repository instructions supplement the global Dimension Eight Labs rules. 
 
 ## Product identity
 
-- Application: DIM8 BT Thermometer. Project and repository: `dim8-bt-thermometer`.
+- Application: DIM8 BT Thermometer, developed by Dimension Eight Labs LLC. Project: `dim8-bt-thermometer`. Repository: <https://github.com/Dimension-Eight-Labs/dim8-bt-thermometer>.
 - Android application ID and Kotlin namespace: `com.dim8labs.btthermometer`. Never change the application ID, because Android treats a new ID as a different app.
 - "Govee" is not product branding. Keep it only where it accurately identifies the supported Govee H5182 hardware, protocol sources, or upstream projects.
 
@@ -19,7 +19,7 @@ These repository instructions supplement the global Dimension Eight Labs rules. 
 ## Evidence and hardware claims
 
 - Do not invent BLE behavior, packet fields, device capabilities, measurements, or test results. Retain raw, timestamped advertisement fixtures used by decoder tests, with device identifiers anonymized where practical.
-- Treat H5182 configuration writes as unsupported until the protocol and the specific hardware have been verified. In v0.1, local application thresholds are authoritative.
+- Treat H5182 configuration writes as unsupported until the protocol and the specific hardware have been verified. Local application thresholds are authoritative.
 - Clearly distinguish host/JVM tests, Android instrumentation tests, emulator checks, and physical Pixel XL/H5182 tests. Never claim real-device validation without recorded physical-test evidence.
 - A build or automated test does not prove screen-off scanning, alarm audibility, radio recovery, or thermometer correctness.
 - Record unresolved questions, platform constraints, hardware limitations, and evidence needed to close them.
@@ -36,6 +36,13 @@ These repository instructions supplement the global Dimension Eight Labs rules. 
 - Follow the acceptance checklist in `docs/ARCHITECTURE.md`. Do not mark checklist items passed unless the stated test was actually performed.
 - Before changes, inspect repository state and relevant source/tests. At handoff, report files changed, commands and tests actually run, warnings, limitations, and remaining physical verification.
 - Do not implement features beyond the approved milestone merely because later work is documented.
+
+## Licensing and branding
+
+- Source code and included application artwork are `GPL-3.0-only`. Do not modify `LICENSE`.
+- `BRANDING.md` separates GPL permissions from the DIM8 name and logo rights. Do not add restrictions that limit GPL rights.
+- Before adding a dependency, copied code, or third-party asset, confirm that its license is GPLv3-compatible and update `THIRD_PARTY_NOTICES.md`.
+- Never commit signing keys, credentials, Bluetooth identifiers, or personal data. `raw-assets/` and `for-user/` stay ignored.
 
 ## Git ownership and workflow
 

@@ -1,6 +1,6 @@
 # DIM8 BT Thermometer — Interface Design
 
-Status: v0.1 design, with the DIM8 visual system implemented for owner review
+Status: implemented design for the v1.0.0 initial release
 
 ## DIM8 visual system
 
@@ -45,7 +45,7 @@ Use the platform sans-serif (Roboto on the Pixel XL). Do not use monospaced, sev
 
 ### Brand assets
 
-`raw-assets/dim8-vfd-logo.png` is the read-only source of truth and is excluded from Git. `tools/generate_brand_assets.py` crops it to the header mark and builds the adaptive launcher foreground, adding a slim temperature-colored stem above the official dot. The launcher icon is a proposal for owner review.
+`raw-assets/dim8-vfd-logo.png` is the read-only source of truth and is excluded from Git. `tools/generate_brand_assets.py` crops it to the header mark and builds the adaptive launcher foreground, adding a slim temperature-colored stem above the official dot. The master file is private, so the generated images are committed and the app builds without it. See [`BRANDING.md`](../BRANDING.md) for artwork and name permissions.
 
 ## Experience principles
 
@@ -54,7 +54,7 @@ The app is a glanceable cooking instrument, not a recipe or lifestyle product. I
 - One primary screen, one compact settings surface, and a device-selection surface.
 - Large temperatures, strong contrast, plain status language, and generous touch targets.
 - No accounts, onboarding carousel, recipes, journal, social features, advertisements, cloud state, or dedicated graph screen.
-- DIM8 branding is restrained to the app name, approved mark, typography, and approved colors. No brand palette is invented; use accessible neutral system colors until assets are supplied.
+- DIM8 branding is restrained to the app name, official mark, typography, and the palette above.
 - Color supplements text/icons and never carries alarm or connection meaning alone.
 
 ## Main screen
@@ -63,21 +63,25 @@ Portrait is the release-critical layout. Landscape may reflow but must remain us
 
 ```text
 ┌─────────────────────────────────────┐
-│ DIM8 BT Thermometer       ⚙      │
-│ ● Monitoring · H5182 · Battery —    │
+│ 8. DIM8 BT Thermometer            ⚙ │
+│ Monitoring · 2s ago  H5182 · Bat 83%│
 ├─────────────────────────────────────┤
-│ PROBE 1                    NORMAL    │
-│             142.3 °F                 │
-│ Target 145°   Low 130°   High 150°  │
-│  ▁▂▂▃▄▅▆▇  recent 30 min             │
+│ PROBE 1                    [NORMAL] │
+│ 142°F                   Target 145° │
+│                         Low    130° │
+│                         High   150° │
+│ ▁▂▂▃▄▅▆▇  -30m      -15m       Now  │
 ├─────────────────────────────────────┤
-│ PROBE 2                     HIGH     │
-│             168.1 °F                 │
-│ Target 165°   Low 150°   High 168°  │
-│  ▁▁▂▃▄▆▇█  recent 30 min             │
-│ [Silence probe 2 alarm]              │
+│ PROBE 2                    [▲ HIGH] │
+│ 168°F                   Target 165° │
+│                         Low    150° │
+│                         High   168° │
+│ ▁▁▂▃▄▆▇█  -30m      -15m       Now  │
+│ [Silence probe 2]                   │
 ├─────────────────────────────────────┤
-│ Cook  01:42:17       [Stop] [Reset] │
+│ COOK TIMER 01:42:17  [Stop] [Reset] │
+├─────────────────────────────────────┤
+│           [Stop monitoring]         │
 └─────────────────────────────────────┘
 ```
 
@@ -104,7 +108,7 @@ Each probe card contains, in order:
 1. Probe identity and explicit status (`WAITING`, `NORMAL`, `LOW`, `HIGH`, `STALE`, `MISSING`, `RECONNECTING`, or `NOT IN USE`).
 2. The current temperature as the dominant element, with unit visible. Fahrenheit is displayed in whole degrees, while alarms and history keep the exact decoded value.
 3. Clearly separate `Target`, `Low alarm`, and `High alarm` values; never label a target as an alarm.
-4. A small 30-minute sparkline with gaps for missing/stale intervals.
+4. A compact 30-minute history graph with gaps for missing/stale intervals.
 5. An acknowledgement control only while that probe has an audible alarm episode.
 
 When stale, retain the last temperature with reduced emphasis and show its age. When the decoder reports an absent probe, show `—` and `Probe not detected`; do not render zero. Alarm state needs an icon/text/banner in addition to color. Probe cards must not shift substantially as status changes.
@@ -120,7 +124,7 @@ Provide non-color cues and ensure the UI remains understandable with color-visio
 ## History graph behavior
 
 - Show the latest 30 minutes for each probe, oldest left and newest right, with `-30m`, `-15m`, and `Now` labels.
-- Keep it visually subordinate to the temperature. No pinch/zoom, cursor, legend, or dedicated chart screen in v0.1.
+- Keep it visually subordinate to the temperature. No pinch/zoom, cursor, legend, or dedicated chart screen.
 - Use subtle gridlines and three whole-degree temperature labels. The axis uses the smallest step (at least 5 °F or 2 °C) whose three labels contain the readings with 1 degree of padding, so ordinary 1.8 °F probe steps stay small.
 - Color the line from the temperature palette by its height on the graph.
 - Mark readings at or beyond the limits in force when they were recorded: a red up-triangle for high and a blue down-triangle for low. Excursions are stored with history, need no audible alarm, are unaffected by later limit edits, and scroll out with their samples. Long runs are thinned to one marker per minute plus the first and most extreme points. History recorded before this feature has no markers because its limits are unknown.
@@ -145,8 +149,7 @@ Use a compact settings screen with labels that stay beside their values, a Save 
 - **Thermometer:** selected H5182, change/rescan action, current reception status.
 - **Probe 1 / Probe 2:** in-use switch; target temperature; optional low alarm; optional high alarm; hysteresis; validation summary.
 - **Display:** °F/°C and target color tolerance/bands.
-- **Alerts:** sound/vibration controls allowed by Android notification channels, connection-loss warning preference, and a link to system notification settings.
-- **Monitoring:** explanatory status and, only if testing shows it necessary, a link to battery-optimization settings.
+- **Alerts:** signal-loss warning switch and a link to system notification settings.
 
 Persist edits across app restarts and phone reboots. Validate numeric input in the selected display unit, convert once to canonical Celsius, require low < high when both alarms are enabled, and explain invalid combinations inline. Do not silently rearrange values. Saving a threshold while a current reading is already beyond it must produce deterministic behavior defined by the alarm state-machine tests; the proposed behavior is to evaluate immediately as a new episode.
 
@@ -159,11 +162,11 @@ Device selection lists only plausible H5182 candidates with name and a privacy-c
 On entry into a high or low episode:
 
 - show an unmistakable probe-specific banner/card state;
-- post a high-importance audible notification naming probe, reading, and violated threshold;
+- post a high-importance silent notification naming probe, reading, and violated threshold, while the app-owned player sounds the alarm on Android's alarm stream;
 - expose `Silence`/`Acknowledge` in both notification and app, including a full-screen page over the lock screen because Android 10 hides collapsed notification actions there. While that page is open, a new alarm adds its row without a heads-up banner, which would otherwise cover the top Silence button; and
 - continue showing the violation after acknowledgement until it re-arms.
 
-Acknowledgement silences the current episode, not monitoring and not future episodes. Hysteresis prevents repeated boundary alarms. Notification behavior with the screen locked is release-critical. The interface must not imply it can override Android notification volume, Do Not Disturb, or a user-muted channel.
+Acknowledgement silences the current episode, not monitoring and not future episodes. Hysteresis prevents repeated boundary alarms. Notification behavior with the screen locked is release-critical. The interface must not imply it can override Android alarm volume or Do Not Disturb. Muting the app's notification channel does not stop the app-owned alarm sound.
 
 ### Missing-probe alarm
 
@@ -182,12 +185,14 @@ Use distinct wording from a temperature alarm: `Thermometer signal lost` or `Pro
 - Meet WCAG AA contrast for normal text and controls; favor stronger contrast for the primary temperatures.
 - Support Android font scaling without clipping critical values or controls. Test at default and large font sizes on the Pixel XL.
 - Minimum interactive target: 48 dp. Keep acknowledgement and timer controls separated to prevent accidental taps.
-- Provide content descriptions/state descriptions for status icons and sparklines; announce new alarm states without announcing every incoming sample.
+- Provide content descriptions/state descriptions for status icons and history graphs; announce new alarm states without announcing every incoming sample.
 - Use plain language and stable layout. Avoid thin type, translucent critical text, color-only state, and continuous animation.
-- Support light and dark presentation only if both can be verified by the deadline; a single polished, accessible theme is preferable to two incomplete themes.
+- v1.0.0 ships one dark theme. Add a light theme only if it can be fully verified.
+
+These are design requirements. Large-font behavior, reduced-motion handling, and outdoor readability have not been physically verified for v1.0.0.
 
 ## Release scope and design acceptance
 
-Required for v0.1: both probe readings, separate target/high/low values, monitoring/battery status, visible and audible alarms with acknowledgement/hysteresis, elapsed timer, settings persistence, and small sparklines.
+Included in v1.0.0: both probe readings, separate target/high/low values, monitoring/battery status, visible and audible alarms with acknowledgement/hysteresis, elapsed timer, settings persistence, and compact history graphs.
 
 Defer any brand embellishment, additional screens, chart interaction, presets, or secondary animations that threaten monitoring and physical acceptance. UI acceptance must include glance readability outdoors, locked-screen alarm handling, large-font behavior, absent/stale probe presentation, and confirmation that every alarm/status is understandable without relying on color.

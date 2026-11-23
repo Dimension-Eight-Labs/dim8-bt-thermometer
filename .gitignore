@@ -39,7 +39,9 @@ output-metadata.json
 # Signing material and local secrets. Never commit release keys.
 *.jks
 *.keystore
+*.p12
 keystore.properties
+signing.properties
 .env
 .env.*
 
